@@ -31,6 +31,7 @@ class Linkify extends StatelessWidget {
   final bool humanize;
 
   // TextSpan
+  final TextSpanFactory spanFactory;
 
   /// Style for non-link text
   final TextStyle style;
@@ -58,6 +59,7 @@ class Linkify extends StatelessWidget {
     this.linkTypes,
     this.onOpen,
     this.humanize,
+    this.spanFactory,
     // TextSpawn
     this.style,
     this.linkStyle,
@@ -71,7 +73,7 @@ class Linkify extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final elements = linkify(
+    final List<LinkifyElement> elements = linkify(
       text,
       humanize: humanize,
       linkTypes: linkTypes,
@@ -86,12 +88,10 @@ class Linkify extends StatelessWidget {
           textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
       text: buildTextSpan(
         elements,
-        style: Theme.of(context).textTheme.body1.merge(style),
+        textSpanFactory: spanFactory,
+        style: style,
         onOpen: onOpen,
-        linkStyle: Theme.of(context)
-            .textTheme
-            .body1
-            .merge(style)
+        linkStyle: style
             .copyWith(
               color: Colors.blueAccent,
               decoration: TextDecoration.underline,
@@ -103,30 +103,34 @@ class Linkify extends StatelessWidget {
 }
 
 /// Raw TextSpan builder for more control on the RichText
-TextSpan buildTextSpan(
-  List<LinkifyElement> elements, {
-  TextStyle style,
-  TextStyle linkStyle,
-  LinkCallback onOpen,
-}) {
-  return TextSpan(
-    children: elements.map<TextSpan>(
-      (element) {
-        if (element is LinkableElement) {
-          return TextSpan(
-            text: element.text,
-            style: linkStyle,
-            recognizer: onOpen != null
-                ? (TapGestureRecognizer()..onTap = () => onOpen(element))
-                : null,
-          );
-        } else {
-          return TextSpan(
-            text: element.text,
-            style: style,
-          );
-        }
-      },
-    ).toList(),
-  );
+TextSpan buildTextSpan(List<LinkifyElement> elements,
+    {TextStyle style,
+    TextStyle linkStyle,
+    LinkCallback onOpen,
+    TextSpanFactory textSpanFactory}) {
+  final TextSpanFactory spanFactory = textSpanFactory ??
+      (String text, TextStyle style) => [
+            TextSpan(
+              text: text,
+              style: style,
+            )
+          ];
+  final List<TextSpan> result = <TextSpan>[];
+  for (int i = 0; i < elements.length; i++) {
+    final LinkifyElement element = elements[i];
+    if (element is LinkableElement) {
+      result.add(TextSpan(
+        text: element.text,
+        style: linkStyle,
+        recognizer: onOpen != null
+            ? (TapGestureRecognizer()..onTap = () => onOpen(element))
+            : null,
+      ));
+    } else {
+      result.addAll(spanFactory(element.text, style));
+    }
+  }
+  return TextSpan(children: result);
 }
+
+typedef TextSpanFactory = List<TextSpan> Function(String text, TextStyle style);
