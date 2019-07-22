@@ -61,8 +61,8 @@ class Linkify extends StatelessWidget {
     this.humanize,
     this.spanFactory,
     // TextSpawn
-    this.style,
-    this.linkStyle,
+    this.style = const TextStyle(),
+    this.linkStyle = const TextStyle(),
     // RichText
     this.textAlign = TextAlign.start,
     this.textDirection,
